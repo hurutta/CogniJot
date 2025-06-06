@@ -5,9 +5,9 @@ import random
 app = FastAPI()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# In‐memory storage (for demo purposes). Each index i refers to one entry.
-history_list = []        # list of raw texts
-processed_list = []      # parallel list of processed outputs ("" if never generated)
+history_list = []
+processed_list = []
+ERROR_WORDS = ["abc", "def"]
 
 SAMPLE_TEXTS = [
     "Lorem ipsum dolor sit amet.",
@@ -26,13 +26,12 @@ SAMPLE_TEXTS = [
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    # Embed the HTML/JS directly:
-    return HTMLResponse("""
+    return HTMLResponse(r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ChatGPT‐Style Interface (FastAPI)</title>
+  <title>ChatGPT‐Style Interface with Error Checking</title>
   <style>
     /*─────────────────────────────────────────────────────────────────────────*/
     body, html {
@@ -93,15 +92,38 @@ async def index():
       display: flex;
       flex-direction: column;
     }
-    .editor-body textarea {
+    /* contenteditable div styled like a textarea */
+    #editorDiv {
       height: 150px;
-      resize: vertical;
-      width: 100%;
       padding: 8px;
       font-size: 14px;
       border: 1px solid #ccc;
       border-radius: 4px;
       box-sizing: border-box;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    /* Highlighted error */
+    .error-highlight {
+      background-color: rgba(255, 0, 0, 0.3);
+      position: relative;
+    }
+    .error-highlight[data-error] {
+      cursor: help;
+    }
+    .error-highlight:hover::after {
+      content: attr(data-error);
+      position: absolute;
+      background: #333;
+      color: #fff;
+      padding: 4px 6px;
+      border-radius: 4px;
+      top: 100%;
+      left: 0;
+      white-space: nowrap;
+      z-index: 10;
+      margin-top: 2px;
+      font-size: 12px;
     }
     .editor-buttons {
       margin-top: 12px;
@@ -171,11 +193,12 @@ async def index():
     <div class="editor-panel">
       <div class="editor-header">Text Editor</div>
       <div class="editor-body">
-        <textarea id="editorTextarea" placeholder="Type your message here..."></textarea>
+        <div id="editorDiv" contenteditable="true"></div>
         <div class="editor-buttons">
           <button id="newButton" type="button">New</button>
           <button id="saveButton" type="button">Save</button>
           <button id="generateButton" type="button">Generate</button>
+          <button id="checkErrorsButton" type="button">Check Errors</button>
           <button id="deleteButton" type="button">Delete</button>
         </div>
         <div class="processed-container">
@@ -195,18 +218,30 @@ async def index():
   <script>
     // ─── DOM references ─────────────────────────────────────────────────────────
     const historyUl = document.getElementById("historyList");
-    const editorTextarea = document.getElementById("editorTextarea");
+    const editorDiv = document.getElementById("editorDiv");
     const newButton = document.getElementById("newButton");
     const saveButton = document.getElementById("saveButton");
     const generateButton = document.getElementById("generateButton");
+    const checkErrorsButton = document.getElementById("checkErrorsButton");
     const deleteButton = document.getElementById("deleteButton");
     const randomTextDiv = document.getElementById("randomText");
     const processedOutput = document.getElementById("processedOutput");
 
-    let historyList = [];   // mirrors server‐side history_list
-    let currentIndex = -1;  // selected history index, or –1 if none
+    let historyList = [];
+    let processedList = [];
+    let currentIndex = -1;
+    let errorWords = [];
 
-    // ─── Renders left‐column history; each shows up to 20 chars + “...” ───────
+    // Utility: escape HTML
+    function escapeHTML(str) {
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+    }
+
+    // Renders left‐column history; show first 20 chars + “...” if longer
     function renderHistory() {
       historyUl.innerHTML = "";
       historyList.forEach((text, idx) => {
@@ -217,33 +252,39 @@ async def index():
         if (idx === currentIndex) li.classList.add("selected");
         li.addEventListener("click", () => {
           currentIndex = idx;
-          editorTextarea.value = historyList[idx];
-          // After loading the text, fetch its stored processed output:
-          fetch(`/processed?index=${idx}`)
-            .then(res => res.json())
-            .then(data => {
-              processedOutput.textContent = data.processed;
-            })
-            .catch(console.error);
+          loadHistoryItem(idx);
           renderHistory();
         });
         historyUl.appendChild(li);
       });
     }
 
-    // ─── “New”: clear editor, clear processed, and deselect history ───────────
+    // Load a history item (index) into the editor & processed output
+    function loadHistoryItem(idx) {
+      const raw = historyList[idx];
+      editorDiv.innerText = raw;
+      fetch(`/processed?index=${idx}`)
+        .then(res => res.json())
+        .then(data => {
+          processedOutput.textContent = data.processed;
+        })
+        .catch(console.error);
+      errorWords = [];
+    }
+
+    // “New”: clear editor, processed, and deselect history
     newButton.addEventListener("click", () => {
       currentIndex = -1;
-      editorTextarea.value = "";
+      editorDiv.innerText = "";
       processedOutput.textContent = "";
+      errorWords = [];
       renderHistory();
-      editorTextarea.focus();
+      editorDiv.focus();
     });
 
-    // ─── “Save”: POST /save (index,text) → returns updated history & index;
-    //     then immediately call /process to generate + display the processed text ─
+    // “Save”: POST /save → then POST /process → display processed
     saveButton.addEventListener("click", () => {
-      const text = editorTextarea.value.trim();
+      const text = editorDiv.innerText.trim();
       if (!text) return;
       fetch("/save", {
         method: "POST",
@@ -253,9 +294,10 @@ async def index():
       .then(res => res.json())
       .then(data => {
         historyList = data.history;
+        // Ensure processedList aligns (might reset)
+        processedList = data.history.map((_, i) => processedList[i] || "");
         currentIndex = data.index;
         renderHistory();
-        // Now, call /process to generate processed text for this index:
         return fetch("/process", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -269,9 +311,9 @@ async def index():
       .catch(console.error);
     });
 
-    // ─── “Generate”: POST /process (index,text) → returns processed & stores it ─
+    // “Generate”: POST /process → display processed (no history change)
     generateButton.addEventListener("click", () => {
-      const text = editorTextarea.value;
+      const text = editorDiv.innerText;
       fetch("/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -284,7 +326,57 @@ async def index():
       .catch(console.error);
     });
 
-    // ─── “Delete”: POST /delete(index) → returns updated history ───────────────
+    // “Check Errors”: POST /check → highlight errors
+    checkErrorsButton.addEventListener("click", () => {
+      const text = editorDiv.innerText;
+      fetch("/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+      })
+      .then(res => res.json())
+      .then(data => {
+        errorWords = data.errors.map(e => e.word);
+        highlightErrors(data.errors);
+      })
+      .catch(console.error);
+    });
+
+    // Wrap error words in <span> without resetting caret
+    function highlightErrors(errors) {
+      let raw = editorDiv.innerText;
+      let html = escapeHTML(raw);
+      // Sort unique error words by descending length
+      const unique = [...new Set(errors.map(e => e.word))].sort((a, b) => b.length - a.length);
+      unique.forEach(word => {
+        const regex = new RegExp(escapeRegExp(word), "gi");
+        html = html.replace(regex, match => {
+          const errObj = errors.find(e => e.word.toLowerCase() === match.toLowerCase());
+          const msg = errObj ? errObj.message : "Error";
+          return `<span class="error-highlight" data-error="${escapeHTML(msg)}">${escapeHTML(match)}</span>`;
+        });
+      });
+      editorDiv.innerHTML = html;
+    }
+
+    function escapeRegExp(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // On input: unwrap any spans whose word no longer exists
+    editorDiv.addEventListener("input", () => {
+      if (errorWords.length === 0) return;
+      const spans = Array.from(editorDiv.querySelectorAll("span.error-highlight"));
+      spans.forEach(span => {
+        const word = span.innerText;
+        if (!editorDiv.innerText.includes(word)) {
+          const textNode = document.createTextNode(span.innerText);
+          span.parentNode.replaceChild(textNode, span);
+        }
+      });
+    });
+
+    // “Delete”: POST /delete → update history, clear editor/processed
     deleteButton.addEventListener("click", () => {
       if (currentIndex < 0 || currentIndex >= historyList.length) return;
       fetch("/delete", {
@@ -295,32 +387,33 @@ async def index():
       .then(res => res.json())
       .then(data => {
         historyList = data.history;
+        processedList.pop(currentIndex);
         currentIndex = -1;
-        editorTextarea.value = "";
+        editorDiv.innerText = "";
         processedOutput.textContent = "";
+        errorWords = [];
         renderHistory();
       })
       .catch(console.error);
     });
 
-    // ─── Every second: GET /random → display in right column ─────────────────
+    // Every second: GET /random → display in right column
     function fetchRandom() {
       fetch("/random")
         .then(res => res.json())
-        .then(data => {
-          randomTextDiv.textContent = data.random;
-        })
+        .then(data => { randomTextDiv.textContent = data.random; })
         .catch(console.error);
     }
     setInterval(fetchRandom, 1000);
-    fetchRandom();  // initial call
+    fetchRandom();
 
-    // ─── On page load: GET /history → populate left panel ────────────────────
+    // On page load: GET /history → populate left panel
     window.addEventListener("DOMContentLoaded", () => {
       fetch("/history")
         .then(res => res.json())
         .then(data => {
           historyList = data.history;
+          processedList = historyList.map(() => "");
           renderHistory();
         })
         .catch(console.error);
@@ -333,27 +426,16 @@ async def index():
 
 @app.get("/random")
 async def random_text():
-    """Returns one random string each time JS calls this endpoint."""
     return JSONResponse({"random": random.choice(SAMPLE_TEXTS)})
 
 
 @app.get("/history")
 async def get_history():
-    """
-    Returns the current in‐memory history_list so the front‐end can render it.
-    """
     return JSONResponse({"history": history_list})
 
 
 @app.post("/save")
 async def save_entry(request: Request):
-    """
-    Called when user clicks “Save”.
-    Expects JSON: { "index": <idx_or_-1>, "text": "<content>" }.
-    If index >= 0, overwrite history_list[index]; otherwise append new.
-    Also keep processed_list aligned (initialize new or reset if overwritten).
-    Returns: { "history": history_list, "index": new_or_updated_index }.
-    """
     data = await request.json()
     idx = data.get("index", -1)
     text = data.get("text", "").strip()
@@ -361,14 +443,12 @@ async def save_entry(request: Request):
         return JSONResponse({"history": history_list, "index": idx})
 
     if 0 <= idx < len(history_list):
-        # Overwrite existing entry
         history_list[idx] = text
-        processed_list[idx] = ""  # reset processed, since the text changed
+        processed_list[idx] = ""
         new_idx = idx
     else:
-        # Append new entry
         history_list.append(text)
-        processed_list.append("")  # no processed yet
+        processed_list.append("")
         new_idx = len(history_list) - 1
 
     return JSONResponse({"history": history_list, "index": new_idx})
@@ -376,11 +456,6 @@ async def save_entry(request: Request):
 
 @app.post("/delete")
 async def delete_entry(request: Request):
-    """
-    Called when user clicks “Delete”.
-    Expects JSON: { "index": <idx> }. Removes that entry if valid.
-    Returns: { "history": history_list }.
-    """
     data = await request.json()
     idx = data.get("index", -1)
     if 0 <= idx < len(history_list):
@@ -391,17 +466,10 @@ async def delete_entry(request: Request):
 
 @app.post("/process")
 async def process_input(request: Request):
-    """
-    Called when user clicks “Generate” or immediately after “Save”.
-    Expects JSON: { "index": <idx_or_-1>, "text": "<content>" }.
-    If index >= 0, store processed in processed_list[index]; else do not store.
-    Returns JSON: { "processed": <the_processed_output> }.
-    """
     data = await request.json()
     idx = data.get("index", -1)
     text = data.get("text", "")
 
-    # Example processing: uppercase. Replace with any Python logic you need.
     processed = text.upper()
 
     if 0 <= idx < len(processed_list):
@@ -412,13 +480,20 @@ async def process_input(request: Request):
 
 @app.get("/processed")
 async def get_processed(index: int):
-    """
-    Returns the stored processed output for a given history index.
-    Expects query parameter ?index=<idx>.
-    """
     if 0 <= index < len(processed_list):
         return JSONResponse({"processed": processed_list[index]})
     return JSONResponse({"processed": ""})
+
+
+@app.post("/check")
+async def check_errors(request: Request):
+    data = await request.json()
+    text = data.get("text", "").lower()
+    errors = []
+    for word in ERROR_WORDS:
+        if word in text:
+            errors.append({"word": word, "message": f"'{word}' is an error"})
+    return JSONResponse({"errors": errors})
 
 
 if __name__ == "__main__":
