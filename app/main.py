@@ -240,7 +240,8 @@ async def index():
       editorTextarea.focus();
     });
 
-    // ─── “Save”: POST /save (index,text) → returns updated history & index ────
+    // ─── “Save”: POST /save (index,text) → returns updated history & index;
+    //     then immediately call /process to generate + display the processed text ─
     saveButton.addEventListener("click", () => {
       const text = editorTextarea.value.trim();
       if (!text) return;
@@ -254,11 +255,16 @@ async def index():
         historyList = data.history;
         currentIndex = data.index;
         renderHistory();
-        // after saving, clear editor & deselect; do not clear processed (if exists)
-        currentIndex = -1;
-        editorTextarea.value = "";
-        processedOutput.textContent = "";
-        renderHistory();
+        // Now, call /process to generate processed text for this index:
+        return fetch("/process", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index: currentIndex, text: text })
+        });
+      })
+      .then(res => res.json())
+      .then(data => {
+        processedOutput.textContent = data.processed;
       })
       .catch(console.error);
     });
@@ -266,7 +272,6 @@ async def index():
     // ─── “Generate”: POST /process (index,text) → returns processed & stores it ─
     generateButton.addEventListener("click", () => {
       const text = editorTextarea.value;
-      // Only generate if there's some text in editor:
       fetch("/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,9 +279,7 @@ async def index():
       })
       .then(res => res.json())
       .then(data => {
-        // display processed result
         processedOutput.textContent = data.processed;
-        // if it was saved (index >= 0), we fetched that item's processed; else we just show
       })
       .catch(console.error);
     });
@@ -389,7 +392,7 @@ async def delete_entry(request: Request):
 @app.post("/process")
 async def process_input(request: Request):
     """
-    Called only when user clicks “Generate”.
+    Called when user clicks “Generate” or immediately after “Save”.
     Expects JSON: { "index": <idx_or_-1>, "text": "<content>" }.
     If index >= 0, store processed in processed_list[index]; else do not store.
     Returns JSON: { "processed": <the_processed_output> }.
