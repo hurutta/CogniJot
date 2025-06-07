@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import random
+import re
 
 app = FastAPI()
 
@@ -158,9 +159,9 @@ async def index():
       white-space: pre-wrap;  /* preserve line breaks */
     }
 
-    /* Right: Random text panel (fixed 250px) */
+    /* Right: Random text panel (fixed 350px) */
     .random-panel {
-      flex: 0 0 250px;
+      flex: 0 0 350px;
       border-left: 1px solid #ccc;
       display: flex;
       flex-direction: column;
@@ -177,6 +178,16 @@ async def index():
       font-size: 14px;
       overflow-y: auto;
       word-break: break-word;
+    }
+    /* Tag styles */
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      margin: 2px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #333;
+      background-color: #e0f7fa;
     }
     /*─────────────────────────────────────────────────────────────────────────*/
   </style>
@@ -294,7 +305,6 @@ async def index():
       .then(res => res.json())
       .then(data => {
         historyList = data.history;
-        // Ensure processedList aligns (might reset)
         processedList = data.history.map((_, i) => processedList[i] || "");
         currentIndex = data.index;
         renderHistory();
@@ -346,7 +356,6 @@ async def index():
     function highlightErrors(errors) {
       let raw = editorDiv.innerText;
       let html = escapeHTML(raw);
-      // Sort unique error words by descending length
       const unique = [...new Set(errors.map(e => e.word))].sort((a, b) => b.length - a.length);
       unique.forEach(word => {
         const regex = new RegExp(escapeRegExp(word), "gi");
@@ -397,12 +406,25 @@ async def index():
       .catch(console.error);
     });
 
-    // Every second: GET /random → display in right column
+    // Every second: POST /random with editor text → display tags
     function fetchRandom() {
-      fetch("/random")
-        .then(res => res.json())
-        .then(data => { randomTextDiv.textContent = data.random; })
-        .catch(console.error);
+      const text = editorDiv.innerText || "";
+      fetch("/random", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+      })
+      .then(res => res.json())
+      .then(data => {
+        randomTextDiv.innerHTML = "";
+        data.tags.forEach(tag => {
+          const span = document.createElement("span");
+          span.className = "tag";
+          span.textContent = tag;
+          randomTextDiv.appendChild(span);
+        });
+      })
+      .catch(console.error);
     }
     setInterval(fetchRandom, 1000);
     fetchRandom();
@@ -424,9 +446,24 @@ async def index():
     """)
 
 
-@app.get("/random")
-async def random_text():
-    return JSONResponse({"random": random.choice(SAMPLE_TEXTS)})
+@app.post("/random")
+async def random_text(request: Request):
+    """
+    Takes JSON { "text": "<editor content>" }, extracts up to
+    10 unique words, and returns them as tags.
+    """
+    data = await request.json()
+    text = data.get("text", "")
+    # find words, filter length > 2, make unique
+    words = re.findall(r"\b\w+\b", text)
+    unique = []
+    for w in words:
+        lw = w.lower()
+        if lw not in unique and len(lw) > 2:
+            unique.append(lw)
+        if len(unique) >= 10:
+            break
+    return JSONResponse({"tags": unique})
 
 
 @app.get("/history")
