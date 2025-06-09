@@ -32,164 +32,46 @@ async def index():
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ChatGPT‐Style Interface with Error Checking</title>
+  <title>ChatGPT‐Style Interface</title>
   <style>
-    /*─────────────────────────────────────────────────────────────────────────*/
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      display: flex;
-      height: 100vh;
-    }
+    body, html { margin:0; padding:0; height:100%; font-family:Arial,sans-serif; }
+    .container { display:flex; height:100vh; }
 
-    /* Left: History panel (fixed 250px) */
-    .history-panel {
-      flex: 0 0 250px;
-      border-right: 1px solid #ccc;
-      display: flex;
-      flex-direction: column;
-      background-color: #fafafa;
-    }
-    .history-header {
-      padding: 12px;
-      border-bottom: 1px solid #ccc;
-      font-weight: bold;
-    }
-    .history-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0;
-      margin: 0;
-      list-style: none;
-    }
-    .history-list li {
-      padding: 8px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      word-break: break-word;
-    }
-    .history-list li.selected {
-      background-color: #e6f0ff;
-    }
+    .history-panel { flex:0 0 250px; border-right:1px solid #ccc; display:flex; flex-direction:column; background:#fafafa; }
+    .history-header { padding:12px; border-bottom:1px solid #ccc; font-weight:bold; }
+    .history-list { flex:1; overflow-y:auto; padding:0; margin:0; list-style:none; }
+    .history-list li { padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; word-break:break-word; }
+    .history-list li.selected { background:#e6f0ff; }
 
-    /* Middle: Editor panel */
-    .editor-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    .editor-header {
-      padding: 12px;
-      border-bottom: 1px solid #ccc;
-      background-color: #fafafa;
-      font-weight: bold;
-    }
-    .editor-body {
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-    }
-    /* contenteditable div styled like a textarea */
-    #editorDiv {
-      height: 150px;
-      padding: 8px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-    /* Highlighted error */
-    .error-highlight {
-      background-color: rgba(255, 0, 0, 0.3);
-      position: relative;
-    }
-    .error-highlight[data-error] {
-      cursor: help;
-    }
-    .error-highlight:hover::after {
-      content: attr(data-error);
-      position: absolute;
-      background: #333;
-      color: #fff;
-      padding: 4px 6px;
-      border-radius: 4px;
-      top: 100%;
-      left: 0;
-      white-space: nowrap;
-      z-index: 10;
-      margin-top: 2px;
-      font-size: 12px;
-    }
-    .editor-buttons {
-      margin-top: 12px;
-      display: flex;
-      gap: 8px;
-    }
-    .editor-buttons button {
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: white;
-    }
-    .editor-buttons button:hover {
-      background-color: #0056b3;
-    }
-    /* Processed‐output section with border */
-    .processed-container {
-      margin-top: 12px;
-      padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #f9f9f9;
-      min-height: 60px;
-      box-sizing: border-box;
-    }
-    .processed-output {
-      font-size: 14px;
-      color: #333;
-      white-space: pre-wrap;  /* preserve line breaks */
-    }
+    .editor-panel { flex:1; display:flex; flex-direction:column; }
+    .editor-header { padding:12px; border-bottom:1px solid #ccc; background:#fafafa; font-weight:bold; }
+    .editor-body { padding:12px; display:flex; flex-direction:column; }
+    #editorDiv { height:150px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; overflow-y:auto; white-space:pre-wrap; }
+    .editor-buttons { margin-top:12px; display:flex; gap:8px; }
+    .editor-buttons button { padding:8px 16px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#007bff; color:#fff; }
+    .editor-buttons button:hover { background:#0056b3; }
+    .processed-container { margin-top:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#f9f9f9; min-height:60px; box-sizing:border-box; }
+    .processed-output { font-size:14px; color:#333; white-space:pre-wrap; }
 
-    /* Right: Random text panel (fixed 350px) */
-    .random-panel {
-      flex: 0 0 350px;
-      border-left: 1px solid #ccc;
-      display: flex;
-      flex-direction: column;
-      background-color: #fafafa;
+    .random-panel { flex:0 0 350px; border-left:1px solid #ccc; display:flex; flex-direction:column; background:#fafafa; }
+    .random-header { padding:12px; border-bottom:1px solid #ccc; font-weight:bold; }
+    .random-body { flex:1; padding:12px; font-size:14px; overflow-y:auto; word-break:break-word; }
+    .tag { display:inline-block; padding:4px 8px; margin:2px; border-radius:4px; font-size:12px; background:#e0f7fa; color:#333; }
+
+    .search-button { margin:12px; padding:8px 16px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#28a745; color:#fff; }
+    .search-button:hover { background:#1e7e34; }
+    .search-container { flex:1.5; margin:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#fff; overflow-y:auto; box-sizing:border-box; }
+    .search-list { list-style:none; padding:0; margin:0; }
+    .search-list li { display:flex; align-items:center; padding:4px 0; border-bottom:1px solid #eee; }
+    .search-list img { width:40px; height:40px; object-fit:cover; margin-right:8px; }
+    .search-list a { font-weight:bold; color:#007bff; text-decoration:none; margin-right:8px; }
+    .search-list p { margin:0; font-size:12px; color:#555; }
+
+    .error-highlight { background:rgba(255,0,0,0.3); position:relative; }
+    .error-highlight[data-error]:hover::after {
+      content:attr(data-error); position:absolute; background:#333; color:#fff;
+      padding:4px 6px; border-radius:4px; top:100%; left:0; white-space:nowrap; z-index:10; margin-top:2px; font-size:12px;
     }
-    .random-header {
-      padding: 12px;
-      border-bottom: 1px solid #ccc;
-      font-weight: bold;
-    }
-    .random-body {
-      flex: 1;
-      padding: 12px;
-      font-size: 14px;
-      overflow-y: auto;
-      word-break: break-word;
-    }
-    /* Tag styles */
-    .tag {
-      display: inline-block;
-      padding: 4px 8px;
-      margin: 2px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #333;
-      background-color: #e0f7fa;
-    }
-    /*─────────────────────────────────────────────────────────────────────────*/
   </style>
 </head>
 <body>
@@ -206,11 +88,11 @@ async def index():
       <div class="editor-body">
         <div id="editorDiv" contenteditable="true"></div>
         <div class="editor-buttons">
-          <button id="newButton" type="button">New</button>
-          <button id="saveButton" type="button">Save</button>
-          <button id="generateButton" type="button">Generate</button>
-          <button id="checkErrorsButton" type="button">Check Errors</button>
-          <button id="deleteButton" type="button">Delete</button>
+          <button id="newButton">New</button>
+          <button id="saveButton">Save</button>
+          <button id="generateButton">Generate</button>
+          <button id="checkErrorsButton">Check Errors</button>
+          <button id="deleteButton">Delete</button>
         </div>
         <div class="processed-container">
           <div><strong>Processed Output:</strong></div>
@@ -223,180 +105,141 @@ async def index():
     <div class="random-panel">
       <div class="random-header">Random Text</div>
       <div id="randomText" class="random-body"></div>
+
+      <button id="searchButton" class="search-button">Search</button>
+
+      <div class="search-container">
+        <div><strong>Search Results:</strong></div>
+        <ul id="searchResults" class="search-list"></ul>
+      </div>
     </div>
   </div>
 
   <script>
-    // ─── DOM references ─────────────────────────────────────────────────────────
-    const historyUl = document.getElementById("historyList");
-    const editorDiv = document.getElementById("editorDiv");
-    const newButton = document.getElementById("newButton");
-    const saveButton = document.getElementById("saveButton");
+    const historyUl      = document.getElementById("historyList");
+    const editorDiv      = document.getElementById("editorDiv");
+    const newButton      = document.getElementById("newButton");
+    const saveButton     = document.getElementById("saveButton");
     const generateButton = document.getElementById("generateButton");
-    const checkErrorsButton = document.getElementById("checkErrorsButton");
-    const deleteButton = document.getElementById("deleteButton");
-    const randomTextDiv = document.getElementById("randomText");
-    const processedOutput = document.getElementById("processedOutput");
+    const checkErrorsBtn = document.getElementById("checkErrorsButton");
+    const deleteButton   = document.getElementById("deleteButton");
+    const randomTextDiv  = document.getElementById("randomText");
+    const processedOutput= document.getElementById("processedOutput");
+    const searchButton   = document.getElementById("searchButton");
+    const searchResults  = document.getElementById("searchResults");
 
-    let historyList = [];
-    let processedList = [];
-    let currentIndex = -1;
-    let errorWords = [];
+    let historyArr   = [], processedArr = [], currentIndex = -1, errorWords = [];
 
-    // Utility: escape HTML
-    function escapeHTML(str) {
-      return str.replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+    function escapeHTML(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+              .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+              .replace(/'/g,"&#39;");
     }
 
-    // Renders left‐column history; show first 20 chars + “...” if longer
     function renderHistory() {
       historyUl.innerHTML = "";
-      historyList.forEach((text, idx) => {
+      historyArr.forEach((t,i)=>{
         const li = document.createElement("li");
-        const displayText = text.length > 20 ? text.slice(0, 20) + "..." : text;
-        li.textContent = displayText;
-        li.dataset.index = idx;
-        if (idx === currentIndex) li.classList.add("selected");
+        li.textContent = t.length>20 ? t.slice(0,20)+"..." : t;
+        li.dataset.index = i;
+        if (i===currentIndex) li.classList.add("selected");
         li.addEventListener("click", () => {
-          currentIndex = idx;
-          loadHistoryItem(idx);
+          currentIndex = i;
+          loadHistory(i);
           renderHistory();
         });
         historyUl.appendChild(li);
       });
     }
 
-    // Load a history item (index) into the editor & processed output
-    function loadHistoryItem(idx) {
-      const raw = historyList[idx];
-      editorDiv.innerText = raw;
-      fetch(`/processed?index=${idx}`)
-        .then(res => res.json())
-        .then(data => {
-          processedOutput.textContent = data.processed;
-        })
-        .catch(console.error);
+    function loadHistory(i) {
+      editorDiv.innerText = historyArr[i];
+      fetch(`/processed?index=${i}`)
+        .then(r=>r.json())
+        .then(d=> processedOutput.textContent = d.processed);
       errorWords = [];
+      // **Fetch random tags upon toggling history**
+      fetchRandom();
     }
 
-    // “New”: clear editor, processed, and deselect history
-    newButton.addEventListener("click", () => {
-      currentIndex = -1;
-      editorDiv.innerText = "";
-      processedOutput.textContent = "";
-      errorWords = [];
-      renderHistory();
-      editorDiv.focus();
-    });
+    newButton.onclick = () => {
+      currentIndex=-1; editorDiv.innerText=""; processedOutput.textContent="";
+      errorWords=[]; renderHistory(); editorDiv.focus();
+    };
 
-    // “Save”: POST /save → then POST /process → display processed
-    saveButton.addEventListener("click", () => {
+    saveButton.onclick = () => {
       const text = editorDiv.innerText.trim();
-      if (!text) return;
+      if(!text) return;
       fetch("/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index: currentIndex, text: text })
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex, text})
       })
-      .then(res => res.json())
-      .then(data => {
-        historyList = data.history;
-        processedList = data.history.map((_, i) => processedList[i] || "");
-        currentIndex = data.index;
+      .then(r=>r.json())
+      .then(d=>{
+        historyArr = d.history;
+        processedArr = historyArr.map((_,i)=>processedArr[i]||"");
+        currentIndex = d.index;
         renderHistory();
         return fetch("/process", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ index: currentIndex, text: text })
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({index:currentIndex, text})
         });
       })
-      .then(res => res.json())
-      .then(data => {
-        processedOutput.textContent = data.processed;
-      })
+      .then(r=>r.json())
+      .then(d=> processedOutput.textContent = d.processed)
       .catch(console.error);
-    });
+    };
 
-    // “Generate”: POST /process → display processed (no history change)
-    generateButton.addEventListener("click", () => {
-      const text = editorDiv.innerText;
+    generateButton.onclick = () => {
+      const text=editorDiv.innerText;
       fetch("/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index: currentIndex, text: text })
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex, text})
       })
-      .then(res => res.json())
-      .then(data => {
-        processedOutput.textContent = data.processed;
-      })
+      .then(r=>r.json())
+      .then(d=> processedOutput.textContent = d.processed)
       .catch(console.error);
-    });
+    };
 
-    // “Check Errors”: POST /check → highlight errors
-    checkErrorsButton.addEventListener("click", () => {
-      const text = editorDiv.innerText;
+    checkErrorsBtn.onclick = () => {
+      const txt = editorDiv.innerText;
       fetch("/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text })
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:txt})
       })
-      .then(res => res.json())
-      .then(data => {
-        errorWords = data.errors.map(e => e.word);
-        highlightErrors(data.errors);
+      .then(r=>r.json())
+      .then(d=>{
+        errorWords = d.errors.map(e=>e.word);
+        highlightErrors(d.errors);
       })
       .catch(console.error);
-    });
+    };
 
-    // Wrap error words in <span> without resetting caret
     function highlightErrors(errors) {
-      let raw = editorDiv.innerText;
-      let html = escapeHTML(raw);
-      const unique = [...new Set(errors.map(e => e.word))].sort((a, b) => b.length - a.length);
-      unique.forEach(word => {
-        const regex = new RegExp(escapeRegExp(word), "gi");
-        html = html.replace(regex, match => {
-          const errObj = errors.find(e => e.word.toLowerCase() === match.toLowerCase());
-          const msg = errObj ? errObj.message : "Error";
-          return `<span class="error-highlight" data-error="${escapeHTML(msg)}">${escapeHTML(match)}</span>`;
+      let raw = editorDiv.innerText, html=escapeHTML(raw);
+      const uniq=[...new Set(errors.map(e=>e.word))].sort((a,b)=>b.length-a.length);
+      uniq.forEach(w=>{
+        const rx=new RegExp(escapeRegExp(w),"gi");
+        html=html.replace(rx,m=>{
+          const msg=errors.find(e=>e.word.toLowerCase()===m.toLowerCase()).message;
+          return `<span class="error-highlight" data-error="${escapeHTML(msg)}">${escapeHTML(m)}</span>`;
         });
       });
-      editorDiv.innerHTML = html;
+      editorDiv.innerHTML=html;
     }
+    function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
 
-    function escapeRegExp(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    // On input: unwrap any spans whose word no longer exists
-    editorDiv.addEventListener("input", () => {
-      if (errorWords.length === 0) return;
-      const spans = Array.from(editorDiv.querySelectorAll("span.error-highlight"));
-      spans.forEach(span => {
-        const word = span.innerText;
-        if (!editorDiv.innerText.includes(word)) {
-          const textNode = document.createTextNode(span.innerText);
-          span.parentNode.replaceChild(textNode, span);
-        }
-      });
-    });
-
-    // “Delete”: POST /delete → update history, clear editor/processed
+    // **Use addEventListener for delete to ensure it registers**
     deleteButton.addEventListener("click", () => {
-      if (currentIndex < 0 || currentIndex >= historyList.length) return;
+      if(currentIndex<0||currentIndex>=historyArr.length) return;
       fetch("/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index: currentIndex })
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex})
       })
-      .then(res => res.json())
-      .then(data => {
-        historyList = data.history;
-        processedList.pop(currentIndex);
+      .then(r=>r.json())
+      .then(d=>{
+        historyArr = d.history;
+        processedArr.pop(currentIndex);
         currentIndex = -1;
         editorDiv.innerText = "";
         processedOutput.textContent = "";
@@ -406,37 +249,74 @@ async def index():
       .catch(console.error);
     });
 
-    // Every second: POST /random with editor text → display tags
+    // **Debounce random fetch on pause (5s)**
+    let randomTimeout;
     function fetchRandom() {
-      const text = editorDiv.innerText || "";
+      const txt = editorDiv.innerText||"";
       fetch("/random", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text })
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:txt})
       })
-      .then(res => res.json())
-      .then(data => {
+      .then(r=>r.json())
+      .then(d=>{
         randomTextDiv.innerHTML = "";
-        data.tags.forEach(tag => {
-          const span = document.createElement("span");
-          span.className = "tag";
-          span.textContent = tag;
-          randomTextDiv.appendChild(span);
+        d.tags.forEach(tag=>{
+          const sp = document.createElement("span");
+          sp.className = "tag"; sp.textContent = tag;
+          randomTextDiv.appendChild(sp);
         });
       })
       .catch(console.error);
     }
-    setInterval(fetchRandom, 1000);
-    fetchRandom();
+    editorDiv.addEventListener("input", () => {
+      clearTimeout(randomTimeout);
+      randomTimeout = setTimeout(fetchRandom, 5000);
+      // unwrap error spans if deleted
+      if(errorWords.length){
+        Array.from(editorDiv.querySelectorAll("span.error-highlight")).forEach(span=>{
+          const w = span.innerText;
+          if(!editorDiv.innerText.includes(w)){
+            span.parentNode.replaceChild(document.createTextNode(w), span);
+          }
+        });
+      }
+    });
 
-    // On page load: GET /history → populate left panel
+    // **Search uses editor content**
+    searchButton.addEventListener("click", () => {
+      const q = editorDiv.innerText.trim().toLowerCase();
+      fetch("/search", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({query:q})
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        searchResults.innerHTML = "";
+        (data.results||[]).forEach(item=>{
+          const li = document.createElement("li");
+          const img = document.createElement("img"); img.src=item.logo;
+          const a = document.createElement("a"); a.href=item.link; a.target="_blank"; a.textContent=item.title;
+          const p = document.createElement("p"); p.textContent=item.description;
+          li.appendChild(img); li.appendChild(a); li.appendChild(p);
+          searchResults.appendChild(li);
+        });
+        if(!(data.results||[]).length){
+          const li = document.createElement("li");
+          li.textContent = "No results found.";
+          searchResults.appendChild(li);
+        }
+      })
+      .catch(console.error);
+    });
+
     window.addEventListener("DOMContentLoaded", () => {
       fetch("/history")
-        .then(res => res.json())
-        .then(data => {
-          historyList = data.history;
-          processedList = historyList.map(() => "");
+        .then(r=>r.json())
+        .then(d=>{
+          historyArr = d.history;
+          processedArr = historyArr.map(()=> "");
           renderHistory();
+          fetchRandom();  // initial tags load
         })
         .catch(console.error);
     });
@@ -448,13 +328,8 @@ async def index():
 
 @app.post("/random")
 async def random_text(request: Request):
-    """
-    Takes JSON { "text": "<editor content>" }, extracts up to
-    10 unique words, and returns them as tags.
-    """
     data = await request.json()
     text = data.get("text", "")
-    # find words, filter length > 2, make unique
     words = re.findall(r"\b\w+\b", text)
     unique = []
     for w in words:
@@ -464,6 +339,25 @@ async def random_text(request: Request):
         if len(unique) >= 10:
             break
     return JSONResponse({"tags": unique})
+
+
+@app.post("/search")
+async def search_endpoint(request: Request):
+    dummy = [
+        {
+            "title": "FastAPI v0.95 Released",
+            "description": "FastAPI 0.95 brings performance improvements and new features.",
+            "logo": "https://via.placeholder.com/40",
+            "link": "https://fastapi.tiangolo.com/"
+        },
+        {
+            "title": "Gradio 4.0 Launched",
+            "description": "Gradio 4.0 introduces a revamped UI and faster load times.",
+            "logo": "https://via.placeholder.com/40",
+            "link": "https://gradio.app/"
+        }
+    ]
+    return JSONResponse({"results": dummy})
 
 
 @app.get("/history")
