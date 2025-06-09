@@ -160,6 +160,7 @@ async def index():
       errorWords = [];
       // **Fetch random tags upon toggling history**
       fetchRandom();
+      searchResults.innerHTML = "";
     }
 
     newButton.onclick = () => {
