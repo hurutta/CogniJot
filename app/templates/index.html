@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ChatGPT‐Style Interface</title>
+  <style>
+    body, html { margin:0; padding:0; height:100%; font-family:Arial,sans-serif; }
+    .container { display:flex; height:100vh; }
+
+    .history-panel { flex:0 0 250px; border-right:1px solid #ccc; display:flex; flex-direction:column; background:#fafafa; }
+    .history-header { padding:12px; border-bottom:1px solid #ccc; font-weight:bold; }
+    .history-list { flex:1; overflow-y:auto; padding:0; margin:0; list-style:none; }
+    .history-list li { padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; word-break:break-word; }
+    .history-list li.selected { background:#e6f0ff; }
+    .history-footer {
+     padding: 16px;
+     border-top: 1px solid #ccc;
+     text-align: center;
+     }
+    .footer-logo {
+     width: 120px;
+     height: auto;
+     }
+
+
+    .editor-panel { flex:1; display:flex; flex-direction:column; }
+    .editor-header { padding:12px; border-bottom:1px solid #ccc; background:#fafafa; font-weight:bold; }
+    .editor-body { padding:12px; display:flex; flex-direction:column; }
+    #editorDiv { height:250px; padding:8px; font-size:14px; font-family: monospace; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; overflow-y:auto; white-space:pre-wrap; }
+    .editor-buttons { margin-top:12px; display:flex; gap:8px; }
+    .editor-buttons button { padding:8px 16px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#007bff; color:#fff; }
+    .editor-buttons button:hover { background:#0056b3; }
+    .processed-container { margin-top:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#f9f9f9; min-height:60px; box-sizing:border-box; }
+    .processed-output { font-size:14px; color:#333; white-space:pre-wrap; }
+    .processed-container > div:first-child { margin-bottom: 8px; }
+
+    .random-panel { flex:0 0 350px; border-left:1px solid #ccc; display:flex; flex-direction:column; background:#fafafa; }
+    .random-header { padding:12px; border-bottom:1px solid #ccc; font-weight:bold; }
+    .random-body { flex:1; padding:12px; font-size:14px; overflow-y:auto; word-break:break-word; }
+    .tag { display:inline-block; padding:4px 8px; margin:2px; border-radius:4px; font-size:12px; background:#e0f7fa; color:#333; }
+
+    .search-button { margin:12px; margin-bottom: 0px; padding:8px 8px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#28a745; color:#fff; }
+    .search-button:hover { background:#1e7e34; }
+    .search-container { flex:12; margin:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#fff; overflow-y:auto; box-sizing:border-box; }
+    .search-list { list-style:none; padding:0; margin:0; }
+    .search-list li { display:flex; align-items:center; padding:4px 0; border-bottom:1px solid #eee; }
+    .search-list img { width:40px; height:40px; object-fit:cover; margin-right:8px; }
+    .search-list a { font-weight:bold; color:#007bff; text-decoration:none; margin-right:8px; }
+    .search-list p { margin:0; font-size:12px; color:#555; }
+
+    /* Meaningful colors per button */
+    #newButton {
+      background-color: #28a745;    /* green = new */
+    }
+    #newButton:hover {
+      background-color: #218838;
+    }
+
+    #saveButton {
+      background-color: #007bff;    /* blue = save */
+    }
+    #saveButton:hover {
+      background-color: #0069d9;
+    }
+
+    #generateButton {
+      background-color: #17a2b8;    /* teal = generate */
+      color: white;
+    }
+    #generateButton:hover {
+      background-color: #138496;
+    }
+
+    #checkErrorsButton {
+      background-color: #ffc107;    /* yellow = check */
+      color: #212529;
+    }
+    #checkErrorsButton:hover {
+      background-color: #e0a800;
+    }
+
+    #deleteButton {
+      background-color: #dc3545;    /* red = delete */
+    }
+    #deleteButton:hover {
+      background-color: #c82333;
+    }
+
+
+    .error-highlight { background:rgba(255,0,0,0.3); position:relative; }
+    .error-highlight[data-error]:hover::after {
+      content:attr(data-error); position:absolute; background:#333; color:#fff;
+      padding:4px 6px; border-radius:4px; top:100%; left:0; white-space:nowrap; z-index:10; margin-top:2px; font-size:12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left: History Panel -->
+    <div class="history-panel">
+      <div class="history-header">History</div>
+      <ul id="historyList" class="history-list"></ul>
+        <div class="history-footer">
+          <a href="https://github.com/hurutta" target="_blank">
+            <img src="assets/logo.png"
+                 alt="Logo"
+                 class="footer-logo" />
+          </a>
+        </div>
+    </div>
+
+    <!-- Middle: Editor Panel -->
+    <div class="editor-panel">
+      <div class="editor-header">Text Editor</div>
+      <div class="editor-body">
+        <div id="editorDiv" contenteditable="true"></div>
+        <div class="editor-buttons">
+          <button id="newButton">New</button>
+          <button id="saveButton">Save</button>
+          <button id="generateButton">Generate</button>
+          <button id="checkErrorsButton">Check Errors</button>
+          <button id="deleteButton">Delete</button>
+        </div>
+        <div class="processed-container">
+          <div><strong>Processed Output:</strong></div>
+          <div id="processedOutput" class="processed-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Text Analysis Panel -->
+    <div class="random-panel">
+      <div class="random-header">Text Analysis</div>
+      <div id="randomText" class="random-body"></div>
+
+      <button id="searchButton" class="search-button">Search</button>
+
+      <div class="search-container">
+        <div><strong>Search Results:</strong></div>
+        <ul id="searchResults" class="search-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const historyUl      = document.getElementById("historyList");
+    const editorDiv      = document.getElementById("editorDiv");
+    const newButton      = document.getElementById("newButton");
+    const saveButton     = document.getElementById("saveButton");
+    const generateButton = document.getElementById("generateButton");
+    const checkErrorsBtn = document.getElementById("checkErrorsButton");
+    const deleteButton   = document.getElementById("deleteButton");
+    const randomTextDiv  = document.getElementById("randomText");
+    const processedOutput= document.getElementById("processedOutput");
+    const searchButton   = document.getElementById("searchButton");
+    const searchResults  = document.getElementById("searchResults");
+
+    let historyArr   = [], processedArr = [], currentIndex = -1, errorWords = [];
+
+    function escapeHTML(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+              .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+              .replace(/'/g,"&#39;");
+    }
+
+    function renderHistory() {
+      historyUl.innerHTML = "";
+      historyArr.forEach((t,i)=>{
+        const li = document.createElement("li");
+        li.textContent = t.length>20 ? t.slice(0,20)+"..." : t;
+        li.dataset.index = i;
+        if (i===currentIndex) li.classList.add("selected");
+        li.addEventListener("click", () => {
+          currentIndex = i;
+          loadHistory(i);
+          renderHistory();
+        });
+        historyUl.appendChild(li);
+      });
+    }
+
+    function loadHistory(i) {
+      editorDiv.innerText = historyArr[i];
+      fetch(`/process/?index=${i}`)
+        .then(r=>r.json())
+        .then(d=> processedOutput.textContent = d.processed);
+      errorWords = [];
+      // **Fetch random tags upon toggling history**
+      fetchRandom();
+      searchResults.innerHTML = "";
+    }
+
+    newButton.onclick = () => {
+      currentIndex=-1; editorDiv.innerText=""; processedOutput.textContent="";
+      errorWords=[]; renderHistory(); editorDiv.focus();
+    };
+
+    saveButton.onclick = () => {
+      const text = editorDiv.innerText.trim();
+      if(!text) return;
+      fetch("/history/save", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex, text})
+      })
+      .then(r=>r.json())
+      .then(d=>{
+        historyArr = d.history;
+        processedArr = historyArr.map((_,i)=>processedArr[i]||"");
+        currentIndex = d.index;
+        renderHistory();
+        return fetch("/process/", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({index:currentIndex, text})
+        });
+      })
+      .then(r=>r.json())
+      .then(d=> processedOutput.textContent = d.processed)
+      .catch(console.error);
+    };
+
+    generateButton.onclick = () => {
+      const text=editorDiv.innerText;
+      fetch("/process/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex, text})
+      })
+      .then(r=>r.json())
+      .then(d=> processedOutput.textContent = d.processed)
+      .catch(console.error);
+    };
+
+    checkErrorsBtn.onclick = () => {
+      const txt = editorDiv.innerText;
+      fetch("/check/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:txt})
+      })
+      .then(r=>r.json())
+      .then(d=>{
+        errorWords = d.errors.map(e=>e.word);
+        highlightErrors(d.errors);
+      })
+      .catch(console.error);
+    };
+
+    function highlightErrors(errors) {
+      let raw = editorDiv.innerText, html=escapeHTML(raw);
+      const uniq=[...new Set(errors.map(e=>e.word))].sort((a,b)=>b.length-a.length);
+      uniq.forEach(w=>{
+        const rx=new RegExp(escapeRegExp(w),"gi");
+        html=html.replace(rx,m=>{
+          const msg=errors.find(e=>e.word.toLowerCase()===m.toLowerCase()).message;
+          return `<span class="error-highlight" data-error="${escapeHTML(msg)}">${escapeHTML(m)}</span>`;
+        });
+      });
+      editorDiv.innerHTML=html;
+    }
+    function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+    // **Use addEventListener for delete to ensure it registers**
+    deleteButton.addEventListener("click", () => {
+      if(currentIndex<0||currentIndex>=historyArr.length) return;
+      fetch("/history/delete", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({index:currentIndex})
+      })
+      .then(r=>r.json())
+      .then(d=>{
+        historyArr = d.history;
+        processedArr.pop(currentIndex);
+        currentIndex = -1;
+        editorDiv.innerText = "";
+        processedOutput.textContent = "";
+        errorWords = [];
+        renderHistory();
+      })
+      .catch(console.error);
+    });
+
+    // **Debounce random fetch on pause (5s)**
+    let randomTimeout;
+    function fetchRandom() {
+      const txt = editorDiv.innerText||"";
+      fetch("/tags/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:txt})
+      })
+      .then(r=>r.json())
+      .then(d=>{
+        randomTextDiv.innerHTML = "";
+        d.tags.forEach(tag=>{
+          const sp = document.createElement("span");
+          sp.className = "tag"; sp.textContent = tag;
+          randomTextDiv.appendChild(sp);
+        });
+      })
+      .catch(console.error);
+    }
+    editorDiv.addEventListener("input", () => {
+      clearTimeout(randomTimeout);
+      randomTimeout = setTimeout(fetchRandom, 5000);
+      // unwrap error spans if deleted
+      if(errorWords.length){
+        Array.from(editorDiv.querySelectorAll("span.error-highlight")).forEach(span=>{
+          const w = span.innerText;
+          if(!editorDiv.innerText.includes(w)){
+            span.parentNode.replaceChild(document.createTextNode(w), span);
+          }
+        });
+      }
+    });
+
+    // **Search uses editor content**
+    searchButton.addEventListener("click", () => {
+      const q = editorDiv.innerText.trim().toLowerCase();
+      fetch("/search/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({query:q})
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        searchResults.innerHTML = "";
+        (data.results||[]).forEach(item=>{
+          const li = document.createElement("li");
+          const img = document.createElement("img"); img.src=item.logo;
+          const a = document.createElement("a"); a.href=item.link; a.target="_blank"; a.textContent=item.title;
+          const p = document.createElement("p"); p.textContent=item.description;
+          li.appendChild(img); li.appendChild(a); li.appendChild(p);
+          searchResults.appendChild(li);
+        });
+        if(!(data.results||[]).length){
+          const li = document.createElement("li");
+          li.textContent = "No results found.";
+          searchResults.appendChild(li);
+        }
+      })
+      .catch(console.error);
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      fetch("/history/")
+        .then(r=>r.json())
+        .then(d=>{
+          historyArr = d.history;
+          processedArr = historyArr.map(()=> "");
+          renderHistory();
+          fetchRandom();  // initial tags load
+        })
+        .catch(console.error);
+    });
+  </script>
+</body>
+</html>
