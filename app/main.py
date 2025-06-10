@@ -1,9 +1,15 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 import random
 import re
 
 app = FastAPI()
+
+static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+app.mount("/assets", StaticFiles(directory=static_path), name="assets")
 
 # ─────────────────────────────────────────────────────────────────────────────
 history_list = []
@@ -42,16 +48,27 @@ async def index():
     .history-list { flex:1; overflow-y:auto; padding:0; margin:0; list-style:none; }
     .history-list li { padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; word-break:break-word; }
     .history-list li.selected { background:#e6f0ff; }
+    .history-footer {
+     padding: 16px;
+     border-top: 1px solid #ccc;
+     text-align: center;
+     }
+    .footer-logo {
+     width: 120px;
+     height: auto;
+     }
+
 
     .editor-panel { flex:1; display:flex; flex-direction:column; }
     .editor-header { padding:12px; border-bottom:1px solid #ccc; background:#fafafa; font-weight:bold; }
     .editor-body { padding:12px; display:flex; flex-direction:column; }
-    #editorDiv { height:150px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; overflow-y:auto; white-space:pre-wrap; }
+    #editorDiv { height:250px; padding:8px; font-size:14px; font-family: monospace; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; overflow-y:auto; white-space:pre-wrap; }
     .editor-buttons { margin-top:12px; display:flex; gap:8px; }
     .editor-buttons button { padding:8px 16px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#007bff; color:#fff; }
     .editor-buttons button:hover { background:#0056b3; }
     .processed-container { margin-top:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#f9f9f9; min-height:60px; box-sizing:border-box; }
     .processed-output { font-size:14px; color:#333; white-space:pre-wrap; }
+    .processed-container > div:first-child { margin-bottom: 8px; }
 
     .random-panel { flex:0 0 350px; border-left:1px solid #ccc; display:flex; flex-direction:column; background:#fafafa; }
     .random-header { padding:12px; border-bottom:1px solid #ccc; font-weight:bold; }
@@ -80,6 +97,13 @@ async def index():
     <div class="history-panel">
       <div class="history-header">History</div>
       <ul id="historyList" class="history-list"></ul>
+        <div class="history-footer">
+          <a href="https://github.com/hurutta" target="_blank">
+            <img src="assets/logo.png"
+                 alt="Logo"
+                 class="footer-logo" />
+          </a>
+        </div>  
     </div>
 
     <!-- Middle: Editor Panel -->
