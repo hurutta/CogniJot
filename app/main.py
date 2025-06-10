@@ -75,14 +75,53 @@ async def index():
     .random-body { flex:1; padding:12px; font-size:14px; overflow-y:auto; word-break:break-word; }
     .tag { display:inline-block; padding:4px 8px; margin:2px; border-radius:4px; font-size:12px; background:#e0f7fa; color:#333; }
 
-    .search-button { margin:12px; padding:8px 16px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#28a745; color:#fff; }
+    .search-button { margin:12px; margin-bottom: 0px; padding:8px 8px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#28a745; color:#fff; }
     .search-button:hover { background:#1e7e34; }
-    .search-container { flex:1.5; margin:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#fff; overflow-y:auto; box-sizing:border-box; }
+    .search-container { flex:12; margin:12px; padding:12px; border:1px solid #ccc; border-radius:4px; background:#fff; overflow-y:auto; box-sizing:border-box; }
     .search-list { list-style:none; padding:0; margin:0; }
     .search-list li { display:flex; align-items:center; padding:4px 0; border-bottom:1px solid #eee; }
     .search-list img { width:40px; height:40px; object-fit:cover; margin-right:8px; }
     .search-list a { font-weight:bold; color:#007bff; text-decoration:none; margin-right:8px; }
     .search-list p { margin:0; font-size:12px; color:#555; }
+    
+    /* Meaningful colors per button */
+    #newButton {
+      background-color: #28a745;    /* green = new */
+    }
+    #newButton:hover {
+      background-color: #218838;
+    }
+    
+    #saveButton {
+      background-color: #007bff;    /* blue = save */
+    }
+    #saveButton:hover {
+      background-color: #0069d9;
+    }
+    
+    #generateButton {
+      background-color: #17a2b8;    /* teal = generate */
+      color: white;
+    }
+    #generateButton:hover {
+      background-color: #138496;
+    }
+    
+    #checkErrorsButton {
+      background-color: #ffc107;    /* yellow = check */
+      color: #212529;
+    }
+    #checkErrorsButton:hover {
+      background-color: #e0a800;
+    }
+    
+    #deleteButton {
+      background-color: #dc3545;    /* red = delete */
+    }
+    #deleteButton:hover {
+      background-color: #c82333;
+    }
+
 
     .error-highlight { background:rgba(255,0,0,0.3); position:relative; }
     .error-highlight[data-error]:hover::after {
@@ -125,9 +164,9 @@ async def index():
       </div>
     </div>
 
-    <!-- Right: Random Text Panel -->
+    <!-- Right: Text Analysis Panel -->
     <div class="random-panel">
-      <div class="random-header">Random Text</div>
+      <div class="random-header">Text Analysis</div>
       <div id="randomText" class="random-body"></div>
 
       <button id="searchButton" class="search-button">Search</button>
