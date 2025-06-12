@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>ChatGPT‐Style Interface</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     body, html { margin:0; padding:0; height:100%; font-family:Arial,sans-serif; }
     .container { display:flex; height:100vh; }
@@ -92,6 +93,44 @@
       content:attr(data-error); position:absolute; background:#333; color:#fff;
       padding:4px 6px; border-radius:4px; top:100%; left:0; white-space:nowrap; z-index:10; margin-top:2px; font-size:12px;
     }
+
+    .processed-output p {
+      margin: 0 0;    /* shrink paragraph top/bottom gap */
+    }
+    .processed-output h1 {
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output h2{
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output h3{
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output h4{
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output h5{
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output h6 {
+      margin: 0 0;    /* tighter heading spacing */
+    }
+    .processed-output ul,
+    .processed-output ol {
+      margin: 0 0 0 20px;  /* reduce list gap and keep indent */
+      padding: 0;
+    }
+    .processed-output blockquote {
+      margin: 2px 0;
+      padding-left: 12px;
+      border-left: 3px solid #ccc;
+    }
+    /* optionally catch any other Markdown‐generated element */
+    .processed-output * {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
   </style>
 </head>
 <body>
@@ -183,7 +222,7 @@
       editorDiv.innerText = historyArr[i];
       fetch(`/process/?index=${i}`)
         .then(r=>r.json())
-        .then(d=> processedOutput.textContent = d.processed);
+        .then(d=> processedOutput.innerHTML = marked.parse(d.processed));
       errorWords = [];
       // **Fetch random tags upon toggling history**
       fetchRandom();
@@ -214,7 +253,7 @@
         });
       })
       .then(r=>r.json())
-      .then(d=> processedOutput.textContent = d.processed)
+      .then(d=> processedOutput.innerHTML = marked.parse(d.processed))
       .catch(console.error);
     };
 
@@ -225,7 +264,7 @@
         body:JSON.stringify({index:currentIndex, text})
       })
       .then(r=>r.json())
-      .then(d=> processedOutput.textContent = d.processed)
+      .then(d=> processedOutput.innerHTML = marked.parse(d.processed))
       .catch(console.error);
     };
 
