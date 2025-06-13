@@ -33,3 +33,16 @@ class OpenAiCompatibleChatClient:
             ]
         )
         return response.choices[0].message.content
+
+    def format_markdown(self, user_prompt: str) -> str:
+        rendered_user_prompt = self.render_prompt("markdown_formatter.j2", {"paragraph": user_prompt})
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            temperature=0,
+            max_tokens=1024,
+            messages=[
+                {"role": "user", "content": rendered_user_prompt}
+            ]
+        )
+        return response.choices[0].message.content

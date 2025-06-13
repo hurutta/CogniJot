@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from services.openai_client import OpenAiCompatibleChatClient
+
 router = APIRouter()
+chat_client = OpenAiCompatibleChatClient()
 
 processed_list = []
 
@@ -12,9 +15,8 @@ async def process_input(request: Request):
 
     idx = data.get("index", -1)
     text = data.get("text", "")
-    print(idx)
 
-    processed = text.upper()
+    processed = chat_client.format_markdown(user_prompt=text)
 
     if 0 <= idx < len(processed_list):
         processed_list[idx] = processed
