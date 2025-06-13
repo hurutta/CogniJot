@@ -46,3 +46,15 @@ class OpenAiCompatibleChatClient:
             ]
         )
         return response.choices[0].message.content
+
+    def find_gist(self, user_prompt: str) -> str:
+        rendered_user_prompt = self.render_prompt("search_query_generator.j2", {"paragraph": user_prompt})
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            temperature=0.2,
+            max_tokens=128,
+            messages=[
+                {"role": "user", "content": rendered_user_prompt}
+            ]
+        )
+        return response.choices[0].message.content
