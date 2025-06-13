@@ -12,7 +12,7 @@ async def random_text(request: Request):
     text = data.get("text", "")
     unique = []
 
-    if text is not None and len(text.strip()) > 0:
+    if text is not None and len(text.strip()) > 10:
         vectorizer = CountVectorizer(stop_words='english')
         X = vectorizer.fit_transform([text])
 
