@@ -1,0 +1,84 @@
+%%{
+  init: {
+    "theme": "base",
+    "themeVariables": {
+      "background": "#F2F2F2",
+      "primaryColor": "#000000",
+      "secondaryColor": "#EAE4D5",
+      "tertiaryColor": "#B6B09F",
+      "edgeLabelBackground": "#F2F2F2",
+      "fontFamily": "Arial",
+      "textColor": "#000000"
+    }
+  }
+}%%
+flowchart LR
+%% UI Layer
+subgraph UI[" "]
+direction LR
+Editor["Editor<br/>(User Interface)"]
+end
+
+%% Analysis Layer
+subgraph Analysis[" "]
+direction LR
+DuckDuckGo["DuckDuckGo API<br/>(Search)"]
+end
+
+%% Analysis Layer
+subgraph Analysis2[" "]
+direction LR
+LLM["LLM<br/>(Cloud/locally hosted)"]
+end
+
+%% Actions Layer
+subgraph Actions[" "]
+direction TB
+GenerateButton["Generate<br/>(Format & Beautify)"]
+ErrorButton["Error Finder<br/>(Find error)"]
+
+QueryAnalysis["Query Analysis<br/>(Deep search)"]
+
+TopicExtraction["Topic Extraction<br/>(LDA)"]
+
+end
+
+%% Storage Layer
+subgraph Storage[" "]
+direction LR
+HistoryDB["History Store<br/>(TinyDB)"]
+end
+
+%% Flows
+Editor -- " Store raw text" --> HistoryDB
+Editor <--> TopicExtraction
+Editor <--> GenerateButton
+
+Editor <--> ErrorButton
+ErrorButton --> LLM
+ErrorButton --> HistoryDB
+
+GenerateButton --> LLM
+GenerateButton --> HistoryDB
+QueryAnalysis -- " find query gyst" --> LLM
+
+Editor <--> QueryAnalysis
+
+QueryAnalysis -- " LLM generated query " --> DuckDuckGo
+
+
+%% Minimal Palette Styling
+classDef ui      fill: #EAE4D5, stroke: #000000, stroke-width: 2px, rounded;
+classDef logic   fill: #B6B09F,stroke: #000000, stroke-width: 2px, rounded;
+classDef action  fill: #F2F2F2, stroke: #000000, stroke-width: 2px, rounded;
+classDef api     fill:#EAE4D5, stroke: #000000, stroke-width: 2px,rounded;
+classDef db      fill: #B6B09F, stroke: #000000, stroke-width: 2px, rounded;
+classDef llm     fill: #B6BA9F, stroke: #000000, stroke-width:2px, rounded;
+
+
+class Editor ui;
+class TopicExtraction action;
+class GenerateButton,ErrorButton,SearchButton,ErrorCheck,QueryAnalysis action;
+class DuckDuckGo api;
+class HistoryDB db;
+class LLM llm;
