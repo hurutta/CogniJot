@@ -105,6 +105,21 @@ class LLM llm;
 - **Deep Search**: Perform a “deep search” by sending the gist of your text to a search engine and view curated results directly in the UI.
 - **Note Storage & History**: Save, load, edit, and delete notes in the left-hand history panel.
 
+## Usage
+
+- Clone the repository
+    ```bash
+    git clone https://github.com/hurutta/CogniJot
+    cd CogniJot
+    ```
+- Build and run with docker
+    ```bash 
+    docker build -t cognijot .
+    docker run -e LLM_BASE_URL="$YOUR_LLM_PROVIDER" -e LLM_MODEL_NAME="$MODEL_NAME" -e LLM_API_KEY="$API_TOKEN" -p 5678:5678 cognijot
+    ```
+- Access with browser - `http://0.0.0.0:5678`
+
+
 
 ## Contributing
 
