@@ -215,8 +215,8 @@
     historyArr.forEach(entry => {
       const id   = Object.keys(entry)[0];
       const text = entry[id];
-      const display = text.length > 20
-        ? text.slice(0, 20) + "..."
+      const display = text.length > 25
+        ? text.slice(0, 25) + "..."
         : text;
 
       const li = document.createElement("li");
@@ -377,7 +377,7 @@
   }
   editorDiv.addEventListener("input", () => {
     clearTimeout(randomTimeout);
-    randomTimeout = setTimeout(fetchRandom, 5000);
+    randomTimeout = setTimeout(fetchRandom, 1000);
     if (errorWords.length) {
       Array.from(editorDiv.querySelectorAll("span.error-highlight")).forEach(span => {
         if (!editorDiv.innerText.includes(span.innerText)) {
