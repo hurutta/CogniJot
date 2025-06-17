@@ -1,4 +1,4 @@
-[<img src="app/assets/logo.png" style="height:120px" align="right">](https://github.com/hurutta/bangla-news-mcp)
+[<img src="app/assets/logo.png" style="height:120px" align="right">](https://github.com/hurutta/CogniJot)
 
 # CogniJot
 AI-powered academic note-taking tool that beautifies, refines, and corrects errors in your notes.
@@ -99,16 +99,11 @@ class LLM llm;
 ```
 
 ## Key Features
-- **Text Editor**  
-  Format and beautify your text using a rich content-editable area.
-- **Error Checking**  
-  Automatically find errors (e.g. grammatical, mathematical etc.) and view suggestions via hover tooltips.
-- **Topic & Keyword Extraction**  
-  Extract up to 10 unique keywords or topics from your text as colorful tags.
-- **Deep Search**  
-  Perform a “deep search” by sending the gist of your text to a search engine and view curated results directly in the UI.
-- **Note Storage & History**  
-  Save, load, edit, and delete notes in the left-hand history panel.
+- **Text Editor**: Format and beautify your text using a rich content-editable area.
+- **Error Checking**: Automatically find errors (e.g. grammatical, mathematical etc.) and view suggestions via hover tooltips.
+- **Topic & Keyword Extraction**: Extract up to 10 unique keywords or topics from your text as colorful tags.
+- **Deep Search**: Perform a “deep search” by sending the gist of your text to a search engine and view curated results directly in the UI.
+- **Note Storage & History**: Save, load, edit, and delete notes in the left-hand history panel.
 
 
 ## Contributing
