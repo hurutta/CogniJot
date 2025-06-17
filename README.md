@@ -1,3 +1,5 @@
+[<img src="app/assets/logo.png" style="height:120px" align="right">](https://github.com/hurutta/bangla-news-mcp)
+
 # CogniJot
 AI-powered academic note-taking tool that beautifies, refines, and corrects errors in your notes.
 
